@@ -1,4 +1,5 @@
 import scrapy
+import pymongo
 
 
 class GoodreadsSpider(scrapy.Spider):
@@ -8,6 +9,15 @@ class GoodreadsSpider(scrapy.Spider):
         'https://www.goodreads.com/list/show/1.Best_Books_Ever?page=1']
     count = 0  # Đếm số dòng dữ liệu
     limit = 1001  # Giới hạn là 1000 dòng dữ liệu
+
+    def __init__(self, *args, **kwargs):
+        super(GoodreadsSpider, self).__init__(*args, **kwargs)
+
+        # Thiết lập kết nối đến MongoDB
+        self.client = pymongo.MongoClient(
+            'localhost', 27017)
+        self.db = self.client['goodreads_db']
+        self.collection = self.db['books']
 
     def parse(self, response):
         books = response.css('tr[itemtype="http://schema.org/Book"]')
@@ -67,7 +77,7 @@ class GoodreadsSpider(scrapy.Spider):
             pages = None
             cover_type = None
 
-        yield {
+        book_data = {
             'Rank': rank,             # Thứ tự
             'Title': title,           # Tên sách
             'Author': author,         # Tác giả
@@ -80,3 +90,10 @@ class GoodreadsSpider(scrapy.Spider):
             'Cover Type': cover_type,  # Loại bìa
             'Score': score            # Điểm số
         }
+
+        # Lưu dữ liệu vào MongoDB
+        self.collection.insert_one(book_data)
+
+    def close(self, reason):
+        # Đóng kết nối MongoDB khi kết thúc cào dữ liệu
+        self.client.close()
