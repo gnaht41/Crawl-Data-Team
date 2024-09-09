@@ -19,8 +19,6 @@ class GoodreadsSpider(scrapy.Spider):
             rank = book.css('td.number::text').get()
             title = book.css('a.bookTitle span::text').get()
             author = book.css('a.authorName span::text').get()
-            votes = book.css(
-                'a[id^="loading_link"]::text').re_first(r'(\d+,\d+)')
 
             score_text = book.css('span.smallText a::text').re_first(
                 r'score: ([\d,]+)')
@@ -32,7 +30,6 @@ class GoodreadsSpider(scrapy.Spider):
                 'rank': rank,
                 'title': title,
                 'author': author,
-                'votes': votes,
                 'score': score
             })
 
@@ -49,7 +46,6 @@ class GoodreadsSpider(scrapy.Spider):
         rank = response.meta['rank']
         title = response.meta['title']
         author = response.meta['author']
-        votes = response.meta['votes']
         score = response.meta['score']
 
         rating = response.css('div.RatingStatistics__rating::text').get()
@@ -79,7 +75,6 @@ class GoodreadsSpider(scrapy.Spider):
             'Number of Ratings': number_of_ratings,  # Số lượng đánh giá
             'Date': date,             # Ngày xuất bản
             'Description': description,  # Mô tả nội dung
-            'Votes': votes,           # Số phiếu bầu
             'Reviews': reviews,       # Số lượng bình luận
             'Pages': pages,           # Số trang
             'Cover Type': cover_type,  # Loại bìa
