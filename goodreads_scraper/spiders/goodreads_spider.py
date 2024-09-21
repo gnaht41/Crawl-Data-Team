@@ -14,10 +14,12 @@ class GoodreadsSpider(scrapy.Spider):
         super(GoodreadsSpider, self).__init__(*args, **kwargs)
 
         # Thiết lập kết nối đến MongoDB
-        self.client = pymongo.MongoClient(
-            'localhost', 27017)
+        # Thay 'localhost' bằng 'mongodb'
+        self.client = pymongo.MongoClient('mongodb', 27017)
+
+        # Đây là database mà bạn muốn lưu trữ
         self.db = self.client['goodreads_db']
-        self.collection = self.db['books']
+        self.collection = self.db['books']  # Đây là collection để
 
     def parse(self, response):
         books = response.css('tr[itemtype="http://schema.org/Book"]')
