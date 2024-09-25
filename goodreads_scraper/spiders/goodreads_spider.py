@@ -1,5 +1,6 @@
 import scrapy
 import pymongo
+import os
 
 
 class GoodreadsSpider(scrapy.Spider):
@@ -12,11 +13,21 @@ class GoodreadsSpider(scrapy.Spider):
     count = 0  # Đếm số dòng dữ liệu
     limit = 1001  # Giới hạn là 1000 dòng dữ liệu
 
+    # def __init__(self, *args, **kwargs):
+    #     super(GoodreadsSpider, self).__init__(*args, **kwargs)
+
+    #     # Thiết lập kết nối đến MongoDB
+    #     self.client = pymongo.MongoClient('mongodb://localhost:27017')
+    #     # Nếu muốn chạy trên mongo thuần thì đổi thành mongodb://localhost:27017/
+    #     self.db = self.client['goodreads_db']
+    #     self.collection = self.db['books']
+
     def __init__(self, *args, **kwargs):
         super(GoodreadsSpider, self).__init__(*args, **kwargs)
 
-        # Thiết lập kết nối đến MongoDB
-        self.client = pymongo.MongoClient('mongodb://localhost:27017/')
+        # Sử dụng MONGO_URI từ biến môi trường
+        mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
+        self.client = pymongo.MongoClient(mongo_uri)
         self.db = self.client['goodreads_db']
         self.collection = self.db['books']
 
