@@ -1,5 +1,5 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, when, regexp_replace
+from pyspark.sql.functions import col, regexp_replace, monotonically_increasing_id
 
 # Khởi tạo phiên Spark với MongoDB và PostgreSQL
 spark = SparkSession.builder \
@@ -37,7 +37,7 @@ df = df.withColumn("Pages", col("Pages").cast("int")) \
 # Hiển thị dữ liệu sau khi chuyển đổi
 df.select("Number of Ratings", "Reviews").show(5)
 
-# Bước 3: Xử lý dữ liệu null (nếu cần)
+# Bước 3: Xử lý dữ liệu null, nếu có giá trị null sẽ thay bằng giá trị mặc định
 df = df.na.fill({
     "Pages": 0,
     "Rating": 0.0,
@@ -46,9 +46,12 @@ df = df.na.fill({
 })
 
 # Tạo các bảng từ dữ liệu
+
+# Bảng authors chứa thông tin về tác giả, sử dụng distinct để loại bỏ các giá trị trùng lặp
 authors_df = df.select("Author").distinct(
 ).withColumnRenamed("Author", "author_name")
 
+# Bảng books chứa thông tin về sách và ngày xuất bản
 books_df = df.select("Title", "Author", "Pages", "Cover Type", "Date") \
              .withColumnRenamed("Title", "book_title") \
              .withColumnRenamed("Author", "author_name") \
@@ -56,11 +59,30 @@ books_df = df.select("Title", "Author", "Pages", "Cover Type", "Date") \
              .withColumnRenamed("Cover Type", "cover_type") \
              .withColumnRenamed("Date", "publish_date")
 
+# Bảng ratings chứa thông tin về đánh giá
 ratings_df = df.select("Title", "Rating", "Number of Ratings", "Reviews") \
                .withColumnRenamed("Title", "book_title") \
                .withColumnRenamed("Rating", "rating") \
                .withColumnRenamed("Number of Ratings", "num_ratings") \
                .withColumnRenamed("Reviews", "num_reviews")
+
+# Bước 4: Tạo khóa chính cho bảng sách và tác giả
+books_df = books_df.withColumn("book_id", monotonically_increasing_id())
+authors_df = authors_df.withColumn("author_id", monotonically_increasing_id())
+
+# Thêm khóa ngoại vào bảng ratings để kết nối với bảng books
+ratings_df = ratings_df.join(books_df.select(
+    "book_title", "book_id"), on="book_title", how="inner")
+
+# Thêm khóa ngoại vào bảng books để kết nối với bảng authors
+books_df = books_df.join(authors_df.select(
+    "author_name", "author_id"), on="author_name", how="inner")
+
+# Loại bỏ các giá trị rỗng hoặc bằng 0 cho các bảng quan trọng
+books_df = books_df.filter((books_df["num_pages"] > 0) & (
+    books_df["publish_date"].isNotNull()))
+ratings_df = ratings_df.filter(
+    (ratings_df["rating"] > 0) & (ratings_df["num_ratings"] > 0))
 
 # Kết nối tới PostgreSQL
 jdbc_url = "jdbc:postgresql://localhost:5432/goodreads_books"
@@ -69,6 +91,8 @@ connection_properties = {
     "password": "thangvt4102004",
     "driver": "org.postgresql.Driver"
 }
+
+# Hàm ghi dữ liệu vào PostgreSQL
 
 
 def write_to_postgres(df, table_name):
