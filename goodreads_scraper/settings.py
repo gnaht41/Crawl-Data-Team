@@ -95,3 +95,19 @@ MONGO_URI = 'mongodb://mongodb:27017'
 REQUEST_FINGERPRINTER_IMPLEMENTATION = "2.7"
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
+
+
+# Định dạng xuất dữ liệu
+FEEDS = {
+    'output/books.csv': {
+        'format': 'csv',
+        'encoding': 'utf8',
+        'overwrite': True,
+    },
+    'output/books.json': {
+        'format': 'json',
+        'encoding': 'utf8',
+        'indent': 4,
+        'overwrite': True,
+    }
+}

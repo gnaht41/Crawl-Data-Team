@@ -6,7 +6,9 @@ class GoodreadsSpider(scrapy.Spider):
     name = 'goodreads_spider'
     allowed_domains = ['goodreads.com']
     start_urls = [
-        'https://www.goodreads.com/list/show/1.Best_Books_Ever?page=1']
+        'https://www.goodreads.com/list/show/1.Best_Books_Ever?page=1'
+    ]
+
     count = 0  # Đếm số dòng dữ liệu
     limit = 1001  # Giới hạn là 1000 dòng dữ liệu
 
@@ -14,12 +16,9 @@ class GoodreadsSpider(scrapy.Spider):
         super(GoodreadsSpider, self).__init__(*args, **kwargs)
 
         # Thiết lập kết nối đến MongoDB
-        # Thay 'localhost' bằng 'mongodb'
-        self.client = pymongo.MongoClient('mongodb', 27017)
-
-        # Đây là database mà bạn muốn lưu trữ
+        self.client = pymongo.MongoClient('mongodb://localhost:27017/')
         self.db = self.client['goodreads_db']
-        self.collection = self.db['books']  # Đây là collection để
+        self.collection = self.db['books']
 
     def parse(self, response):
         books = response.css('tr[itemtype="http://schema.org/Book"]')
@@ -45,7 +44,7 @@ class GoodreadsSpider(scrapy.Spider):
                 'score': score
             })
 
-            self.count += 1  # Tăng số lượng dòng đã cào
+            self.count += 1
 
         # Phân trang - Tìm liên kết đến trang tiếp theo
         next_page = response.css(
@@ -69,32 +68,50 @@ class GoodreadsSpider(scrapy.Spider):
         reviews = response.css(
             'span[data-testid="reviewsCount"]::text').re_first(r'([\d,]+)')
 
-        # Xử lý page format tách ra làm 2 cột
         page_format = response.css('p[data-testid="pagesFormat"]::text').get()
         if page_format:
             pages, cover_type = page_format.split(',', 1)
-            pages = pages.split()[0].strip()  # Chỉ lấy số trang
-            cover_type = cover_type.strip()  # Loại bìa
+            pages = pages.split()[0].strip()
+            cover_type = cover_type.strip()
         else:
             pages = None
             cover_type = None
 
-        book_data = {
-            'Rank': rank,             # Thứ tự
-            'Title': title,           # Tên sách
-            'Author': author,         # Tác giả
-            'Rating': rating,         # Đánh giá trung bình
-            'Number of Ratings': number_of_ratings,  # Số lượng đánh giá
-            'Date': date,             # Ngày xuất bản
-            'Description': description,  # Mô tả nội dung
-            'Reviews': reviews,       # Số lượng bình luận
-            'Pages': pages,           # Số trang
-            'Cover Type': cover_type,  # Loại bìa
-            'Score': score            # Điểm số
+        # Dữ liệu để lưu vào MongoDB
+        book_data_mongo = {
+            'Rank': rank,
+            'Title': title,
+            'Author': author,
+            'Rating': rating,
+            'Number of Ratings': number_of_ratings,
+            'Date': date,
+            'Description': description,
+            'Reviews': reviews,
+            'Pages': pages,
+            'Cover Type': cover_type,
+            'Score': score
         }
 
-        # Lưu dữ liệu vào MongoDB
-        self.collection.insert_one(book_data)
+        # Lưu vào MongoDB
+        self.collection.insert_one(book_data_mongo)
+
+        # Dữ liệu để xuất ra CSV/JSON (không chứa _id)
+        book_data_export = {
+            'Rank': rank,
+            'Title': title,
+            'Author': author,
+            'Rating': rating,
+            'Number of Ratings': number_of_ratings,
+            'Date': date,
+            'Description': description,
+            'Reviews': reviews,
+            'Pages': pages,
+            'Cover Type': cover_type,
+            'Score': score
+        }
+
+        # Trả dữ liệu cho Scrapy để xuất ra file CSV/JSON
+        yield book_data_export
 
     def close(self, reason):
         # Đóng kết nối MongoDB khi kết thúc cào dữ liệu
